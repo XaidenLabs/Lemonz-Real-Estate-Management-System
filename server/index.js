@@ -44,20 +44,24 @@ app.use((req, res, next) => {
 });
 app.use(bodyParser.urlencoded({ extended: true }));
 
-mongoose
-  .connect(process.env.DB_URI)
-  .then(() => {
-    console.log("Connected to MongoDB");
-    // Only listen if not running in Vercel/Serverless environment
-    if (process.env.NODE_ENV !== "production") {
-      app.listen(port, () => {
-        console.log(`Server running on port: http://localhost:${port}!`);
-      });
-    }
-  })
-  .catch((err) => {
-    console.error("MongoDB Connection Error:", err);
-  });
+if (!process.env.DB_URI) {
+  console.error("FATAL ERROR: DB_URI is not defined in environment variables!");
+} else {
+  mongoose
+    .connect(process.env.DB_URI)
+    .then(() => {
+      console.log("Connected to MongoDB");
+      // Only listen if not running in Vercel/Serverless environment
+      if (process.env.NODE_ENV !== "production") {
+        app.listen(port, () => {
+          console.log(`Server running on port: http://localhost:${port}!`);
+        });
+      }
+    })
+    .catch((err) => {
+      console.error("MongoDB Connection Error:", err);
+    });
+}
 
 app.get("/", (req, res) => res.json("Hello world"));
 // Expose a public webhook path (match provider configured URL)
