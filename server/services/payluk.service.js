@@ -1,15 +1,26 @@
 const axios = require("axios");
+const { HttpsProxyAgent } = require("https-proxy-agent");
 
-const PAYLUK_BASE_URL = "https://api.payluk.ng/v1"; // Using the base URL found in previous files
+const PAYLUK_BASE_URL = "https://api.payluk.ng/v1";
 const PAYLUK_SECRET_KEY = process.env.PAYLUK_API_KEY;
 
-const axiosInstance = axios.create({
+const axiosConfig = {
   baseURL: PAYLUK_BASE_URL,
   headers: {
     Authorization: `Bearer ${PAYLUK_SECRET_KEY}`,
     "Content-Type": "application/json",
   },
-});
+};
+
+// --- Proxy Configuration for Vercel Static IP ---
+if (process.env.PAYLUK_PROXY_URL) {
+  console.log("Using Proxy for Payluk Requests");
+  const agent = new HttpsProxyAgent(process.env.PAYLUK_PROXY_URL);
+  axiosConfig.httpsAgent = agent;
+  axiosConfig.proxy = false; // Disable axios default proxy handling
+}
+
+const axiosInstance = axios.create(axiosConfig);
 
 class PaylukService {
   /**
