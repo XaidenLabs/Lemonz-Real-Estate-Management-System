@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 const PAYLUK_BASE_URL = "https://api.payluk.ng/v1"; // Using the base URL found in previous files
-const PAYLUK_SECRET_KEY = process.env.PAYLUK_SECRET_KEY;
+const PAYLUK_SECRET_KEY = process.env.PAYLUK_API_KEY;
 
 const axiosInstance = axios.create({
   baseURL: PAYLUK_BASE_URL,
