@@ -28,7 +28,11 @@ app.use(methodOverride("_method"));
 app.use((req, res, next) => {
   // For webhook endpoints that require raw body for signature verification,
   // parse the raw body and expose it as `req.rawBody`.
-  if (req.path === "/transactions/webhook/escrow" || req.path === "/transaction/webhook/escrow" || req.path === "/api/transaction/webhook/escrow") {
+  if (
+    req.path === "/transactions/webhook/escrow" ||
+    req.path === "/transaction/webhook/escrow" ||
+    req.path === "/api/transaction/webhook/escrow"
+  ) {
     bodyParser.json({
       verify: (req, res, buf) => {
         req.rawBody = buf.toString();
@@ -43,12 +47,16 @@ app.use(bodyParser.urlencoded({ extended: true }));
 mongoose
   .connect(process.env.DB_URI)
   .then(() => {
-    app.listen(port, () => {
-      console.log(`Server running on port: http://localhost:${port}!`);
-    });
+    console.log("Connected to MongoDB");
+    // Only listen if not running in Vercel/Serverless environment
+    if (process.env.NODE_ENV !== "production") {
+      app.listen(port, () => {
+        console.log(`Server running on port: http://localhost:${port}!`);
+      });
+    }
   })
   .catch((err) => {
-    throw new Error(err, "Connection unsuccessful");
+    console.error("MongoDB Connection Error:", err);
   });
 
 app.get("/", (req, res) => res.json("Hello world"));
