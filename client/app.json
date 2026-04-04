@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Lemonz",
-    "slug": "lemon",
+    "slug": "lemon-zee",
     "version": "1.0.0",
     "platforms": [
       "ios",
@@ -44,9 +44,11 @@
     "android": {
       "package": "com.oftotech.lemonz",
       "permissions": [
-        "INTERNET",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/common/logo_square.png",
@@ -68,8 +70,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "c7e609ae-b1e2-4adf-b25e-776ac6dfd8a4"
+        "projectId": "4e69e447-3634-4910-b824-28c70230774b"
       }
-    }
+    },
+    "owner": "xaiden"
   }
 }
