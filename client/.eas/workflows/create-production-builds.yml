@@ -1,0 +1,19 @@
+name: Create production builds
+on:
+  workflow_call:
+    inputs:
+      platform:
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+        default: android
+
+jobs:
+  build_android:
+    name: Build Android APK
+    type: build
+    params:
+      platform: android
+      profile: apkPreview
