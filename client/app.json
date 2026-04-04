@@ -62,7 +62,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Lemonz to access your camera to scan ID documents.",
         "NSLocationWhenInUseUsageDescription": "Allow Lemonz to use your location.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Lemonz to use your location."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Lemonz to use your location.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "extra": {
@@ -70,7 +71,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "4e69e447-3634-4910-b824-28c70230774b"
+        "projectId": "e1f53dfd-47b1-4883-8823-d439dff703d0"
       }
     },
     "owner": "xaiden"
