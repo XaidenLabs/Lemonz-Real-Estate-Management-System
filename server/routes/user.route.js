@@ -14,6 +14,7 @@ const { upload } = require("../middlewares/image-upload");
 const {
   getBanks: getBanksCtrl,
   resolveAccount: resolveAccountCtrl,
+  setupPaylukCustomer,
 } = require("../controllers/payout.controller");
 
 const router = require("express").Router();
@@ -33,5 +34,6 @@ router.post(
 router.post("/reset-password", resetPassword);
 router.get("/banks", getBanksCtrl);
 router.get("/resolve-account", resolveAccountCtrl);
+router.post("/setup-payluk-customer", authenticate, setupPaylukCustomer);
 
 module.exports = router;

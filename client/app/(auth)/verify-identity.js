@@ -35,7 +35,7 @@ const VerifyIdentity = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // User said "PDF only" in spec but forcing Images for easier handling first, can add DocumentPicker later if strictly PDF
+      mediaTypes: ['images'], // User said "PDF only" in spec but forcing Images for easier handling first, can add DocumentPicker later if strictly PDF
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,

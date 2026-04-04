@@ -31,6 +31,7 @@ const register = async (req, res) => {
       bankAccountName,
       bankName,
       bankCode,
+      bvn,
     } = req.body;
 
     const existingUser = await User.findOne({ email });
@@ -86,6 +87,7 @@ const register = async (req, res) => {
       bankAccountName,
       bankName,
       bankCode,
+      bvn: bvn || null,
     };
 
     const user = await User.create(userPayload);
@@ -97,28 +99,8 @@ const register = async (req, res) => {
     const userId = user._id;
     const accessToken = await createAccessToken(userId);
 
-    // --- Payluk Integration (Lazy/Async) ---
-    // Try to create customer on Payluk. If it fails (key 403), we just log it.
-    // The user is already created locally, which is what matters most.
-    try {
-      const paylukId = await paylukService.createCustomer({
-        firstName,
-        lastName,
-        email,
-        phone: mobileNumber,
-      });
+    // Payluk customer will be created on-demand at first payment (lazy provisioning)
 
-      if (paylukId) {
-        user.paylukCustomerId = paylukId;
-        await user.save();
-      }
-    } catch (paylukErr) {
-      console.error(
-        "Registration: Payluk creation skipped:",
-        paylukErr.message
-      );
-    }
-    // ---------------------------------------
 
     return res.status(201).json({
       message: "Registration successful",
@@ -153,38 +135,8 @@ const login = async (req, res) => {
 
     sendLoginNotificationEmail(user.email);
 
-    // --- Payluk Self-Healing on Login ---
-    // If user is old and missed creation, or creation failed before, try again now.
-    if (!user.paylukCustomerId) {
-      // Run async, don't block login response
-      (async () => {
-        try {
-          const paylukId = await paylukService.createCustomer({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            phone: user.mobileNumber,
-            bankAccountNumber: user.bankAccountNumber,
-            bankCode: user.bankCode,
-            bankName: user.bankName,
-          });
-          if (paylukId) {
-            await User.findByIdAndUpdate(userId, {
-              paylukCustomerId: paylukId,
-            });
-            console.log(
-              `[Login Info] Auto-created Payluk Customer for ${user.email}`
-            );
-          }
-        } catch (err) {
-          console.warn(
-            "[Login Warning] Payluk self-healing failed:",
-            err.message
-          );
-        }
-      })();
-    }
-    // ------------------------------------
+    // Payluk customer is provisioned lazily at first payment — no action needed here.
+
 
     return res.status(200).json({
       message: "Login successful",

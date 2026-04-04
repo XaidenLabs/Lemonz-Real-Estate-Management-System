@@ -3,7 +3,11 @@
     "name": "Lemonz",
     "slug": "lemon",
     "version": "1.0.0",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "orientation": "portrait",
     "scheme": "acme",
     "icon": "./assets/common/logo_square.jpg",
@@ -33,7 +37,9 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "android": {
       "package": "com.oftotech.lemonz",

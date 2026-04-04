@@ -639,53 +639,155 @@ const confirmTransaction = async (req, res) => {
     ) {
       console.log(`Sealing Deal for Transaction ${tx._id}...`);
 
-      try {
-        // Trigger Payluk Release
-        const releaseResult = await paylukService.releaseFunds(
-          tx.providerTransactionId,
-          {
-            amount: tx.amount,
-            recipient_code: "RCP_MOCK", // Ideally fetch seller's recipient code from their profile/bank details
+      // --- 4% Commission Split & Automated Disbursement ---
+      const COMMISSION_RATE = 0.04; // 4% platform fee
+      const totalAmount = tx.amount;
+      const commission = Math.round(totalAmount * COMMISSION_RATE * 100) / 100;
+      const netToSeller = Math.round((totalAmount - commission) * 100) / 100;
+
+      // Fetch seller/owner details for payout
+      const owner = await User.findById(tx.ownerId);
+      if (!owner) {
+        return res.status(400).json({
+          success: false,
+          message: "Property owner/seller not found. Cannot release funds.",
+        });
+      }
+
+      // Ensure seller has a Paystack transfer recipient
+      let recipientCode = owner.payoutRecipientId || owner.paystackRecipientCode;
+      if (!recipientCode && owner.bankAccountNumber && owner.bankCode) {
+        try {
+          const recipientResp = await payoutService.createTransferRecipient({
+            name: owner.bankAccountName || `${owner.firstName} ${owner.lastName}`,
+            account_number: owner.bankAccountNumber,
+            bank_code: owner.bankCode,
+          });
+          recipientCode =
+            recipientResp?.data?.recipient_code ||
+            recipientResp?.data?.id ||
+            recipientResp?.recipient_code ||
+            null;
+          if (recipientCode) {
+            owner.payoutRecipientId = recipientCode;
+            await owner.save();
           }
-        );
+        } catch (rcpErr) {
+          console.warn("Auto-create recipient failed:", rcpErr?.message || rcpErr);
+        }
+      }
+
+      // Create Payout record
+      let payout = await Payout.findOne({ transactionId: tx._id });
+      if (!payout) {
+        payout = await Payout.create({
+          transactionId: tx._id,
+          ownerId: tx.ownerId,
+          buyerId: tx.buyerId,
+          amount: totalAmount,
+          amountMinor: Math.round(totalAmount * 100),
+          commission,
+          netAmount: netToSeller,
+          netAmountMinor: Math.round(netToSeller * 100),
+          currency: tx.currency || "NGN",
+          status: "processing",
+          method: "bank_transfer",
+          metadata: {
+            propertyId: tx.propertyId,
+            propertyTitle: tx.draftSnapshot?.title,
+            commissionRate: `${COMMISSION_RATE * 100}%`,
+          },
+        });
+        tx.payoutId = payout._id;
+      }
+
+      try {
+        let releaseResult = null;
+
+        // Path 1: Try Payluk escrow release if we have a provider transaction ID
+        if (tx.providerTransactionId) {
+          releaseResult = await paylukService.releaseFunds(
+            tx.providerTransactionId,
+            {
+              amount: totalAmount,
+              recipient_code: recipientCode || undefined,
+            }
+          );
+        }
+
+        // Path 2: Fall back to Paystack bank transfer disbursement
+        if (!releaseResult && recipientCode) {
+          await payoutService.disbursePayout(payout._id);
+        } else if (!releaseResult && !recipientCode) {
+          // Queue for manual processing — seller has no bank details
+          payout.status = "queued";
+          payout.failureReason = "Seller bank details missing. Queued for manual payout.";
+          await payout.save();
+        }
+
+        // If Payluk release succeeded, mark payout as disbursed
+        if (releaseResult?.success) {
+          payout.status = "disbursed";
+          payout.disbursedAt = new Date();
+          payout.providerReference = releaseResult.transferData?.data?.reference || null;
+          await payout.save();
+        }
 
         // Update Transaction State
         tx.status = "completed";
         tx.escrowStatus = "released";
-        tx.lemonZeeCommission = releaseResult.platformFee;
+        tx.lemonZeeCommission = commission;
         await tx.save();
 
         // Notify Parties
         const messageTitle = "Deal Sealed! Funds Released 💸";
-        const messageBody = `Transaction ${tx._id} is complete. Funds have been released to the Proprietor.`;
+        const buyerMsg = `Your transaction for "${tx.draftSnapshot?.title}" is complete! ₦${netToSeller.toLocaleString()} has been sent to the seller.`;
+        const ownerMsg = `Great news! Your sale of "${tx.draftSnapshot?.title}" is complete. ₦${netToSeller.toLocaleString()} (after 4% platform fee) is being sent to your bank account.`;
 
         await notifyUser({
           userId: tx.buyerId,
           title: messageTitle,
-          body: messageBody,
+          body: buyerMsg,
           sendEmail: true,
         });
         await notifyUser({
           userId: tx.ownerId,
           title: messageTitle,
-          body: messageBody,
+          body: ownerMsg,
           sendEmail: true,
         });
+
+        console.log(
+          `Deal Sealed: TX ${tx._id} | Total: ₦${totalAmount} | Commission: ₦${commission} | Seller: ₦${netToSeller}`
+        );
 
         return res.status(200).json({
           success: true,
           message: "Deal Sealed and Funds Released!",
           transaction: tx,
+          payout: {
+            commission,
+            netToSeller,
+            status: payout.status,
+          },
         });
       } catch (error) {
-        console.error("Payluk Release Failed:", error);
-        // Don't fail the request, just log it. The confirmations are saved.
-        // Admin might need to retry release.
+        console.error("Fund Release Failed:", error);
+        payout.status = "queued";
+        payout.failureReason = error?.message || "Auto-release failed";
+        await payout.save();
+
+        // Still mark confirmations as saved
         return res.status(200).json({
           success: true,
           message:
-            "Confirmations saved, but auto-release failed. Admin will review.",
+            "Confirmations saved, but auto-release failed. Payout queued for admin review.",
           transaction: tx,
+          payout: {
+            commission,
+            netToSeller,
+            status: "queued",
+          },
         });
       }
     }

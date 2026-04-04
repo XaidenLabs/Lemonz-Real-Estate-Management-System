@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   StatusBar,
   Image,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
+import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
@@ -141,7 +143,7 @@ const VerifyId = () => {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: false,
         quality: 1,
       });
@@ -178,38 +180,37 @@ const VerifyId = () => {
       const formData = new FormData();
 
       formData.append("file", {
-        uri: selectedImage,
+        uri: Platform.OS === 'android' ? selectedImage : selectedImage.replace('file://', ''),
         name: "id.jpg",
         type: "image/jpeg",
       });
       formData.append("countryCode", countryCode);
       formData.append("documentType", idDocument);
 
-      const response = await axios.post(
-        `${config.API_BASE_URL}/api/user/verify-identity`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const response = await fetch(`${config.API_BASE_URL}/api/user/verify-identity`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Let fetch automatically set the Content-Type with boundary
+        },
+        body: formData,
+      });
 
-      if (response.data) {
+      const responseData = await response.json();
+
+      if (response.ok && responseData.success !== false) {
         Alert.alert(
           "ID Verification",
           "Your ID has been verified successfully"
         );
         await getUser();
       } else {
-        Alert.alert("Verification Failed", "Unable to process ID.");
+        throw new Error(responseData.message || "Unable to process ID.");
       }
     } catch (error) {
       Alert.alert(
         "Error",
-        error.response?.data?.message ||
-          "An error occurred while verifying the ID."
+        error.message || "An error occurred while verifying the ID."
       );
     } finally {
       setLoading(false);
@@ -252,7 +253,7 @@ const VerifyId = () => {
           </Text>
         </View>
       ) : (
-        <View className="flex-1">
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           <View className="mb-8 rounded-xl overflow-hidden bg-darkUmber h-64">
             {selectedImage ? (
               <Image
@@ -328,7 +329,7 @@ const VerifyId = () => {
             variant="primary"
             disabled={!selectedImage || loading}
           />
-        </View>
+        </ScrollView>
       )}
 
       <StatusBar backgroundColor={"#212A2B"} />

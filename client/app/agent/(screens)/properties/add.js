@@ -269,7 +269,7 @@ const AddProperty = () => {
 
   const handleImageUpload = async (slot) => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 1,
       base64: true,
     });
@@ -328,7 +328,7 @@ const AddProperty = () => {
 
   const handleVideoUpload = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      mediaTypes: ['videos'],
       quality: 1,
     });
 

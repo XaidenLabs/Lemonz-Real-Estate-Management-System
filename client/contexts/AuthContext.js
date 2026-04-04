@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { Platform } from "react-native";
 import { config } from "../config";
 import { getToken } from "../services/getToken";
 
@@ -243,23 +244,27 @@ export const AuthProvider = ({ children }) => {
 
       const formData = new FormData();
       formData.append("file", {
-        uri: imageUri,
+        uri: Platform.OS === 'android' ? imageUri : imageUri.replace('file://', ''),
         type: "image/jpeg",
         name: "identity.jpg",
       });
       formData.append("documentType", idType === "NIN" ? "ID" : "PASSPORT");
       formData.append("countryCode", "NG"); // Defaulting to Nigeria as per context
 
-      const response = await axios.post(
-        `${config.API_BASE_URL}/api/user/verify-identity`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`${config.API_BASE_URL}/api/user/verify-identity`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Let fetch automatically append Content-Type with boundary for FormData
+        },
+        body: formData,
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok || responseData.success === false) {
+        throw new Error(responseData.message || "Verification failed");
+      }
 
       setAuthMessage("Verification Submitted Successfully!");
       // Optionally update user state
@@ -272,9 +277,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.log(
         "ID Verification Error:",
-        error.response?.data || error.message
+        error.message || error
       );
-      const message = error.response?.data?.message || "Verification failed";
+      const message = error.message || "Verification failed";
       setAuthError(message);
       setTimeout(() => setAuthError(""), 3000);
     } finally {

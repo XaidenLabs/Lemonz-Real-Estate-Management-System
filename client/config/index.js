@@ -1,5 +1,5 @@
 export const config = {
-  API_BASE_URL: "http://10.175.218.202:5001",
+  API_BASE_URL: "http://192.168.0.115:5001",
 };
 
 console.log("Configured API URL:", config.API_BASE_URL);

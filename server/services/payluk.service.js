@@ -30,23 +30,29 @@ class PaylukService {
   async createCustomer(userData) {
     try {
       console.log("Creating Payluk Customer for:", userData.email);
-      const response = await axiosInstance.post("/customer/create", {
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+      const payload = {
+        firstname: userData.firstName,
+        lastname: userData.lastName,
         email: userData.email,
         phone: userData.phone,
-        // Add bank details if provided (for Proprietors/Agents)
-        account_number: userData.bankAccountNumber,
-        bank_code: userData.bankCode,
-        bank_name: userData.bankName,
-      });
+      };
 
-      // Payluk returns { status: true, data: { id: "..." } } or similar
-      // We need to parse correctly based on observed responses
+      // bvn is required by Payluk for Nigerian users
+      if (userData.bvn) {
+        payload.bvn = userData.bvn;
+      }
+
+      // Bank details if provided (for Proprietors/Agents)
+      if (userData.bankAccountNumber) payload.account_number = userData.bankAccountNumber;
+      if (userData.bankCode) payload.bank_code = userData.bankCode;
+      if (userData.bankName) payload.bank_name = userData.bankName;
+
+      const response = await axiosInstance.post("/customer/create", payload);
+
       const customerId =
-        response.data?.data?.id ||
+        response.data?.data?.customerId ||
         response.data?.id ||
-        response.data?.data?.customerId;
+        response.data?.data?.id;
 
       if (!customerId) {
         console.warn("Payluk Create Customer: No ID returned", response.data);
@@ -56,13 +62,10 @@ class PaylukService {
       console.log("Payluk Customer Created:", customerId);
       return customerId;
     } catch (error) {
-      // Handle "Customer already exists" or similar if possible
-      // But 403 Forbidden is what we currently expect
       console.error(
         "Payluk Create Customer Error:",
         error.response?.data || error.message
       );
-      // We don't throw, we just return null so signup/payment flows don't crash hard
       return null;
     }
   }

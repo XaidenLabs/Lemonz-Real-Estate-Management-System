@@ -44,6 +44,7 @@ const userSchema = new mongoose.Schema({
   bankAccountName: { type: String, default: null },
   bankName: { type: String, default: null },
   bankCode: { type: String, default: null },
+  bvn: { type: String, default: null },
   // Payout recipient id stored for automated disbursements (provider-agnostic)
   payoutRecipientId: { type: String, default: null },
   paylukCustomerId: { type: String, default: null },
